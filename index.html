@@ -34,7 +34,26 @@
   .btn { display: inline-block; background: var(--acc); color: #0b0d11; font-weight: 700;
     padding: 13px 28px; border-radius: 10px; text-decoration: none; border: 0;
     cursor: pointer; font-size: 16px; transition: background .15s; }
-  .btn:hover { background: var(--acc-d); }
+  .btn:hover { background: var(--acc-d); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(183,229,65,.25); }
+  .btn { transition: background .15s, transform .2s, box-shadow .2s; }
+  /* Subtle motion: staggered reveals on scroll, gentle hover lifts. */
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  .reveal.d1 { transition-delay: .08s; } .reveal.d2 { transition-delay: .16s; }
+  .reveal.d3 { transition-delay: .24s; } .reveal.d4 { transition-delay: .32s; }
+  .reveal.d5 { transition-delay: .4s; }
+  .hero .eyebrow, .hero h1, .hero .sub, .hero .price-line, .hero .btn {
+    animation: rise .7s ease both; }
+  .hero .sub { animation-delay: .1s; } .hero .price-line { animation-delay: .2s; }
+  .hero .btn { animation-delay: .3s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .card { transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+  .card:hover { transform: translateY(-4px); border-color: #3a4358; box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+  .step { transition: border-color .2s; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .hero .eyebrow, .hero h1, .hero .sub, .hero .price-line, .hero .btn { animation: none; transition: none; opacity: 1; transform: none; }
+    .card:hover, .btn:hover { transform: none; }
+  }
   .hero { text-align: center; padding: 72px 0 48px; }
   .eyebrow { color: var(--acc); font-size: 12px; font-weight: 700; letter-spacing: .18em; margin-bottom: 18px; }
   h1 { font-size: clamp(34px, 6vw, 56px); line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 18px; }
@@ -103,7 +122,7 @@
 <header class="hero wrap">
   <div class="eyebrow">UNBROKEN</div>
   <h1>Ship an AI agent product.<br><span class="hl">Not a demo.</span></h1>
-  <p class="sub">The AI Agent Product Starter Kit: streaming chat, RAG over your own documents, tool calling, auth, Stripe subscriptions, on a <strong>crash-safe iteration loop</strong> that keeps long agent runs alive through timeouts, crashes, and deploys.</p>
+  <p class="sub">The AI Agent Product Starter Kit: streaming chat, RAG over your own documents, tool calling, auth, and billing for your product, on a <strong>crash-safe iteration loop</strong> that keeps long agent runs alive through timeouts, crashes, and deploys.</p>
   <div class="price-line">
     <span class="price-old">$99</span><span class="price">$79</span>
     <div class="price-note">Launch price · one-time payment · yours forever</div>
@@ -114,9 +133,9 @@
 
 <section>
   <div class="wrap">
-    <h2>Agent tutorials work, until production</h2>
-    <p class="lede">Most tutorials run the whole agent loop in <strong>one long request</strong>. That dies on timeouts, loses everything on a crash, and can't be observed mid-run. This kit decomposes the loop into <strong>single short iterations</strong>, each persisted to Postgres.</p>
-    <div class="flow">
+    <h2 class="reveal">Agent tutorials work, until production</h2>
+    <p class="lede reveal d1">Most tutorials run the whole agent loop in <strong>one long request</strong>. That dies on timeouts, loses everything on a crash, and can't be observed mid-run. This kit decomposes the loop into <strong>single short iterations</strong>, each persisted to Postgres.</p>
+    <div class="flow reveal d2">
       <span class="step">enqueue</span><span class="arrow">→</span>
       <span class="step">queue</span><span class="arrow">→</span>
       <span class="step hot">claim → iterate (&lt;25s) → checkpoint</span><span class="arrow">× N →</span>
@@ -128,28 +147,24 @@
 
 <section>
   <div class="wrap">
-    <h2>What's inside</h2>
-    <p class="lede">34 files. Next.js 15 + TypeScript + Supabase. Any OpenAI-compatible LLM. Zero chat dependencies.</p>
+    <h2 class="reveal">What's inside</h2>
+    <p class="lede reveal d1">34 files. Next.js 15 + TypeScript + Supabase. Any OpenAI-compatible LLM. Zero chat dependencies.</p>
     <div class="grid">
-      <div class="card"><h3><span class="tag">components/chat/ChatWindow.tsx</span>Streaming chat UI</h3><p>Token-by-token SSE rendering. No chat library required.</p></div>
-      <div class="card"><h3><span class="tag">app/api/chat/route.ts</span>RAG chat API</h3><p>Auth-gated streaming endpoint grounded in your documents.</p></div>
-      <div class="card"><h3><span class="tag">lib/rag/ + migration 0002</span>RAG on pgvector</h3><p>Chunk → embed → similarity search via the <code class="inl">match_documents</code> RPC.</p></div>
-      <div class="card"><h3><span class="tag">lib/agent/tools.ts</span>Tool calling</h3><p>Tool registry + round executor with loop detection, failure budgets, unavailable-tool memory.</p></div>
-      <div class="card"><h3><span class="tag">lib/agent/loop.ts</span>Iteration loop</h3><p>Bounded steps, resumable checkpoints, rolling context tail. The core pattern.</p></div>
-      <div class="card"><h3><span class="tag">lib/agent/filestore.ts</span>FileStore</h3><p>The agent's working filesystem, persisted through checkpoints. Whitespace-tolerant edit.</p></div>
-      <div class="card"><h3><span class="tag">migration 0001 + queue.ts</span>Job queue</h3><p>Atomic <code class="inl">SKIP LOCKED</code> claims, heartbeats, stale-worker recovery.</p></div>
-      <div class="card"><h3><span class="tag">worker/agent-worker</span>Worker</h3><p>Long-running Node process: poll → claim → iterate → checkpoint. No timeouts, no cold starts.</p></div>
-      <div class="card"><h3><span class="tag">lib/stripe/</span>Stripe subscriptions</h3><p>Checkout sessions, signature-verified webhooks, subscription gating.</p></div>
-      <div class="card"><h3><span class="tag">docs/ARCHITECTURE.md</span>The reasoning</h3><p>Why the iteration loop beats naive agent loops, checkpoint design, tuning knobs.</p></div>
+      <div class="card reveal"><h3><span class="tag">components/chat/ + lib/rag/</span>Streaming chat + RAG</h3><p>Token-by-token chat UI over your own documents: chunk → embed → pgvector search, auth-gated.</p></div>
+      <div class="card reveal d1"><h3><span class="tag">lib/agent/loop.ts</span>Iteration loop</h3><p>Bounded steps, resumable checkpoints, rolling context tail. A crash costs one step, never the run.</p></div>
+      <div class="card reveal d2"><h3><span class="tag">lib/agent/tools.ts + filestore.ts</span>Tools + FileStore</h3><p>Tool registry with loop detection and failure budgets, plus the agent's persistent working filesystem.</p></div>
+      <div class="card reveal d3"><h3><span class="tag">worker/ + migration 0001</span>Background worker</h3><p>Long-running Node process on a Postgres queue with atomic <code class="inl">SKIP LOCKED</code> claims. No timeouts, no cold starts.</p></div>
+      <div class="card reveal d4"><h3><span class="tag">lib/stripe/ + lib/supabase/</span>Billing + auth</h3><p>Stripe subscriptions for <em>your</em> product, signature-verified webhooks, and auth with RLS on every table.</p></div>
+      <div class="card reveal d5"><h3><span class="tag">docs/ARCHITECTURE.md</span>The reasoning</h3><p>Why the iteration loop beats naive agent loops: checkpoint design, claim SQL, tuning knobs.</p></div>
     </div>
   </div>
 </section>
 
 <section>
   <div class="wrap">
-    <h2>Who it's for</h2>
+    <h2 class="reveal">Who it's for</h2>
     <div class="cols" style="margin-top:26px">
-      <div class="for yes">
+      <div class="for yes reveal">
         <h3>You'll love it if…</h3>
         <ul>
           <li>You're shipping an AI feature and tired of timeout roulette</li>
@@ -158,7 +173,7 @@
           <li>You know React + TypeScript and can run a Supabase project</li>
         </ul>
       </div>
-      <div class="for no">
+      <div class="for no reveal d1">
         <h3>Skip it if…</h3>
         <ul>
           <li>You want a no-code bot builder (this is source code)</li>
@@ -172,7 +187,7 @@
 
 <section>
   <div class="wrap" style="max-width:720px">
-    <h2>FAQ</h2>
+    <h2 class="reveal">FAQ</h2>
     <div style="margin-top:26px">
       <details><summary>What stack do I need?</summary><p>Next.js 15, TypeScript, a Supabase project (free tier works), a Stripe account for the billing parts, and any OpenAI-compatible LLM endpoint, OpenAI, Together, Fireworks, even local Ollama.</p></details>
       <details><summary>How is this different from free boilerplates?</summary><p>Free starters give you a chat box wired to an API. This kit's value is the <strong>agent runtime architecture</strong>: the bounded iteration loop, Postgres checkpoints, atomic queue claims, and crash recovery, patterns extracted from a real production agent system, not a weekend demo.</p></details>
@@ -259,6 +274,20 @@ function setState(msg, cls) {
   stateEl.textContent = msg;
   stateEl.className = cls || "";
 }
+
+// Reveal-on-scroll: subtle, staggered, respects reduced motion.
+(function reveals() {
+  if (!("IntersectionObserver" in window)) {
+    document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
+    return;
+  }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+})();
 
 // Live sales counter: real social proof. Only appears once 10+ developers
 // are on board, a single-digit count would read as social anti-proof.
