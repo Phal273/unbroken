@@ -138,7 +138,7 @@
       <div class="card"><h3><span class="tag">lib/agent/loop.ts</span>Iteration loop</h3><p>Bounded steps, resumable checkpoints, rolling context tail. The core pattern.</p></div>
       <div class="card"><h3><span class="tag">lib/agent/filestore.ts</span>FileStore</h3><p>The agent's working filesystem, persisted through checkpoints. Whitespace-tolerant edit.</p></div>
       <div class="card"><h3><span class="tag">migration 0001 + queue.ts</span>Job queue</h3><p>Atomic <code class="inl">SKIP LOCKED</code> claims, heartbeats, stale-worker recovery.</p></div>
-      <div class="card"><h3><span class="tag">supabase/functions/agent-worker</span>Worker</h3><p>Deno edge function: claim → iterate → checkpoint → complete. Run it on a cron.</p></div>
+      <div class="card"><h3><span class="tag">worker/agent-worker</span>Worker</h3><p>Long-running Node process: poll → claim → iterate → checkpoint. No timeouts, no cold starts.</p></div>
       <div class="card"><h3><span class="tag">lib/stripe/</span>Stripe subscriptions</h3><p>Checkout sessions, signature-verified webhooks, subscription gating.</p></div>
       <div class="card"><h3><span class="tag">docs/ARCHITECTURE.md</span>The reasoning</h3><p>Why the iteration loop beats naive agent loops, checkpoint design, tuning knobs.</p></div>
     </div>
