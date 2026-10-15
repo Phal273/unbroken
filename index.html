@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Unbroken, Ship an AI agent product, not a demo</title>
 <meta name="description" content="Production-pattern starter kit for AI agent/chatbot products: streaming chat, RAG, tool calling, auth, Stripe subscriptions, and a crash-safe iteration loop on Postgres.">
+<meta property="og:title" content="Unbroken: ship an AI agent product, not a demo">
+<meta property="og:description" content="A production-ready starter kit for AI agent products. Crash-safe iteration loop, RAG, auth, and billing, already wired up. $79 launch price.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://phal273.github.io/unbroken/">
+<meta name="twitter:card" content="summary_large_card">
+<meta name="twitter:title" content="Unbroken: ship an AI agent product, not a demo">
+<meta name="twitter:description" content="A production-ready starter kit for AI agent products. Crash-safe iteration loop, RAG, auth, and billing, already wired up.">
+<link rel="canonical" href="https://phal273.github.io/unbroken/">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Product","name":"Unbroken: AI Agent Product Starter Kit","description":"Production-ready starter kit for AI agent and chatbot products.","offers":{"@type":"Offer","price":"79.00","priceCurrency":"USD"}}
+</script>
 <style>
   :root {
     --bg: #0b0d11; --bg2: #11141a; --card: #151923; --line: #232838;
@@ -96,6 +107,7 @@
   <div class="price-line">
     <span class="price-old">$99</span><span class="price">$79</span>
     <div class="price-note">Launch price · one-time payment · yours forever</div>
+    <div class="price-note" id="sold-note" style="display:none"><span id="sold-count"></span> developers already building on it</div>
   </div>
   <a class="btn" href="#buy">Get the kit</a>
 </header>
@@ -247,6 +259,19 @@ function setState(msg, cls) {
   stateEl.textContent = msg;
   stateEl.className = cls || "";
 }
+
+// Live sales counter: real social proof, updates on its own.
+(function soldCounter() {
+  fetch(STORE_CONFIG.BACKEND_URL + "/stats")
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (data) {
+      if (data && typeof data.sold === "number" && data.sold > 0) {
+        document.getElementById("sold-count").textContent = data.sold;
+        document.getElementById("sold-note").style.display = "block";
+      }
+    })
+    .catch(function () { /* counter is decorative; never break checkout */ });
+})();
 
 // Load the PayPal SDK dynamically so the client ID lives in one place.
 (function loadPayPal() {
