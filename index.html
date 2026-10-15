@@ -49,7 +49,23 @@
   @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
   .card { transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
   .card:hover { transform: translateY(-4px); border-color: #3a4358; box-shadow: 0 12px 32px rgba(0,0,0,.35); }
-  .step { transition: border-color .2s; }
+  /* Product previews: real code, blurred. Reusable pattern: copy a
+     .preview block, swap the filename + code lines. */
+  .previews { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 28px; }
+  @media (max-width: 760px) { .previews { grid-template-columns: 1fr; } }
+  .preview { background: var(--card); border: 1px solid var(--line); border-radius: var(--rad);
+    overflow: hidden; transition: transform .2s ease, border-color .2s ease; }
+  .preview:hover { transform: translateY(-4px); border-color: #3a4358; }
+  .preview-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+    border-bottom: 1px solid var(--line); font-size: 12px; color: var(--mut); }
+  .preview-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: #3a4358; }
+  .preview-bar code { color: var(--acc); font-size: 12px; }
+  .preview-code { padding: 14px 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; line-height: 1.7; color: #c6cddb; white-space: pre; overflow: hidden;
+    filter: blur(4px); user-select: none; -webkit-user-select: none; pointer-events: none;
+    max-height: 220px; }
+  .preview-cap { padding: 12px 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--mut); }
+  .preview-cap strong { color: var(--txt); font-weight: 600; }
   @media (prefers-reduced-motion: reduce) {
     .reveal, .hero .eyebrow, .hero h1, .hero .sub, .hero .price-line, .hero .btn { animation: none; transition: none; opacity: 1; transform: none; }
     .card:hover, .btn:hover { transform: none; }
@@ -154,8 +170,68 @@
       <div class="card reveal d1"><h3><span class="tag">lib/agent/loop.ts</span>Iteration loop</h3><p>Bounded steps, resumable checkpoints, rolling context tail. A crash costs one step, never the run.</p></div>
       <div class="card reveal d2"><h3><span class="tag">lib/agent/tools.ts + filestore.ts</span>Tools + FileStore</h3><p>Tool registry with loop detection and failure budgets, plus the agent's persistent working filesystem.</p></div>
       <div class="card reveal d3"><h3><span class="tag">worker/ + migration 0001</span>Background worker</h3><p>Long-running Node process on a Postgres queue with atomic <code class="inl">SKIP LOCKED</code> claims. No timeouts, no cold starts.</p></div>
-      <div class="card reveal d4"><h3><span class="tag">lib/stripe/ + lib/supabase/</span>Billing + auth</h3><p>Stripe subscriptions for <em>your</em> product, signature-verified webhooks, and auth with RLS on every table.</p></div>
+      <div class="card reveal d4"><h3><span class="tag">lib/stripe/ + lib/supabase/</span>Billing + auth</h3><p>Stripe subscriptions, signature-verified webhooks, and auth with RLS on every table.</p></div>
       <div class="card reveal d5"><h3><span class="tag">docs/ARCHITECTURE.md</span>The reasoning</h3><p>Why the iteration loop beats naive agent loops: checkpoint design, claim SQL, tuning knobs.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="reveal">Peek inside</h2>
+    <p class="lede reveal d1">Real code from the kit, blurred. Buyers see the quality and density; the goods stay in the box.</p>
+    <!-- PREVIEW PATTERN: copy a .preview block for a new file. Keep the
+         filename sharp, blur the code, keep it under ~14 lines. -->
+    <div class="previews">
+      <div class="preview reveal">
+        <div class="preview-bar"><span class="dot"></span><span class="dot"></span><code>lib/agent/loop.ts</code></div>
+        <div class="preview-code">export async function runIteration(
+  job: AgentJob,
+  config: LoopConfig,
+): Promise&lt;IterationOutcome&gt; {
+  const startedAt = Date.now();
+  const deadline = startedAt + MAX_ITERATION_MS;
+  // Restore: rebuild from the checkpoint
+  // the previous worker wrote.
+  let cp: LoopCheckpoint;
+  const rawCp = job.checkpoint;
+  cp = restoreCheckpoint(rawCp);
+  // ... bounded turns, tool rounds,
+  // checkpoint, heartbeat, done
+}</div>
+        <div class="preview-cap"><strong>The iteration loop.</strong> One bounded step, fully checkpointed.</div>
+      </div>
+      <div class="preview reveal d1">
+        <div class="preview-bar"><span class="dot"></span><span class="dot"></span><code>components/chat/ChatWindow.tsx</code></div>
+        <div class="preview-code">"use client";
+import { useCallback, useEffect,
+  useRef, useState } from "react";
+// POST history to /api/chat, read the
+// SSE stream chunk-by-chunk with a
+// ReadableStream reader: the classic
+// typewriter effect, zero dependencies.
+export function ChatWindow() {
+  const [messages, setMessages]
+    = useState&lt;UIMessage[]&gt;([]);
+  // ... streaming, retries, scroll
+}</div>
+        <div class="preview-cap"><strong>The chat UI.</strong> Token-by-token streaming, no chat library.</div>
+      </div>
+      <div class="preview reveal d2">
+        <div class="preview-bar"><span class="dot"></span><span class="dot"></span><code>lib/agent/queue.ts</code></div>
+        <div class="preview-code">export async function claimNextJob():
+  Promise&lt;AgentJob | null&gt; {
+  const { data, error } = await sb
+    .rpc("claim_next_agent_job", {
+      p_stale_after_seconds: 300,
+    });
+  // FOR UPDATE ... SKIP LOCKED:
+  // concurrent workers never take
+  // the same job. Stale heartbeats
+  // get reclaimed automatically.
+}</div>
+        <div class="preview-cap"><strong>The job queue.</strong> Atomic claims, heartbeats, self-healing.</div>
+      </div>
     </div>
   </div>
 </section>
