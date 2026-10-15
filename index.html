@@ -260,12 +260,13 @@ function setState(msg, cls) {
   stateEl.className = cls || "";
 }
 
-// Live sales counter: real social proof, updates on its own.
+// Live sales counter: real social proof. Only appears once 10+ developers
+// are on board, a single-digit count would read as social anti-proof.
 (function soldCounter() {
   fetch(STORE_CONFIG.BACKEND_URL + "/stats")
     .then(function (res) { return res.ok ? res.json() : null; })
     .then(function (data) {
-      if (data && typeof data.sold === "number" && data.sold > 0) {
+      if (data && typeof data.sold === "number" && data.sold >= 10) {
         document.getElementById("sold-count").textContent = data.sold;
         document.getElementById("sold-note").style.display = "block";
       }
