@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent Product Starter Kit, Ship an AI agent product, not a demo</title>
+<meta name="description" content="Production-pattern starter kit for AI agent/chatbot products: streaming chat, RAG, tool calling, auth, Stripe subscriptions, and a crash-safe iteration loop on Postgres.">
+<style>
+  :root {
+    --bg: #0b0d11; --bg2: #11141a; --card: #151923; --line: #232838;
+    --txt: #e8ebf1; --mut: #9aa3b5; --acc: #b7e541; --acc-d: #9ccf2e;
+    --warn: #ffb224; --err: #ff6b6b; --rad: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--txt);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+  nav { display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 0; border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 800; letter-spacing: .06em; font-size: 15px; }
+  .brand span { color: var(--acc); }
+  .btn { display: inline-block; background: var(--acc); color: #0b0d11; font-weight: 700;
+    padding: 13px 28px; border-radius: 10px; text-decoration: none; border: 0;
+    cursor: pointer; font-size: 16px; transition: background .15s; }
+  .btn:hover { background: var(--acc-d); }
+  .hero { text-align: center; padding: 72px 0 48px; }
+  .eyebrow { color: var(--acc); font-size: 12px; font-weight: 700; letter-spacing: .18em; margin-bottom: 18px; }
+  h1 { font-size: clamp(34px, 6vw, 56px); line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 18px; }
+  h1 .hl { color: var(--acc); }
+  .sub { color: var(--mut); font-size: clamp(16px, 2.4vw, 19px); max-width: 640px; margin: 0 auto 30px; }
+  .price-line { margin-bottom: 26px; }
+  .price-old { color: var(--mut); text-decoration: line-through; font-size: 20px; margin-right: 10px; }
+  .price { font-size: 44px; font-weight: 800; }
+  .price-note { color: var(--mut); font-size: 13px; margin-top: 6px; }
+  section { padding: 56px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: clamp(24px, 4vw, 34px); letter-spacing: -0.01em; margin-bottom: 14px; text-align: center; }
+  .lede { color: var(--mut); text-align: center; max-width: 640px; margin: 0 auto 34px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--rad); padding: 20px; }
+  .card h3 { font-size: 16px; margin-bottom: 6px; }
+  .card h3 .tag { color: var(--acc); font-family: ui-monospace, monospace; font-size: 12px; display: block; margin-bottom: 4px; font-weight: 400;}
+  .card p { color: var(--mut); font-size: 14px; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 26px 0; }
+  .step { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 16px; font-family: ui-monospace, monospace; font-size: 13px; }
+  .step.hot { border-color: var(--acc); color: var(--acc); }
+  .arrow { color: var(--mut); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .for { background: var(--card); border: 1px solid var(--line); border-radius: var(--rad); padding: 22px; }
+  .for h3 { margin-bottom: 10px; }
+  .for ul { list-style: none; }
+  .for li { color: var(--mut); font-size: 14px; padding: 6px 0 6px 26px; position: relative; }
+  .for.yes li::before { content: "✓"; color: var(--acc); position: absolute; left: 4px; font-weight: 700; }
+  .for.no li::before { content: "✕"; color: var(--err); position: absolute; left: 4px; }
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; margin-bottom: 10px; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+  details p { color: var(--mut); font-size: 14px; margin-top: 8px; }
+  .buybox { background: var(--bg2); border: 1px solid var(--line); border-radius: 18px;
+    padding: 34px 28px; max-width: 520px; margin: 0 auto; text-align: center; }
+  .buybox .price { font-size: 52px; }
+  .guarantee { color: var(--mut); font-size: 13px; margin: 14px 0 20px; }
+  #pp-state { margin-top: 16px; font-size: 14px; min-height: 22px; }
+  #pp-state.ok { color: var(--acc); }
+  #pp-state.err { color: var(--err); }
+  #pp-state.working { color: var(--warn); }
+  #confirm-box { display: none; margin-top: 18px; background: var(--card);
+    border: 1px solid var(--acc); border-radius: 12px; padding: 20px; text-align: left; }
+  #confirm-box .row { font-size: 14px; color: var(--mut); margin: 4px 0; }
+  #confirm-box .row strong { color: var(--txt); }
+  footer { border-top: 1px solid var(--line); padding: 30px 0 46px; color: var(--mut);
+    font-size: 13px; text-align: center; }
+  footer a { color: var(--mut); }
+  code.inl { font-family: ui-monospace, monospace; background: var(--card);
+    padding: 2px 7px; border-radius: 6px; font-size: 13px; color: var(--acc); }
+  @media (max-width: 720px) {
+    .grid, .cols { grid-template-columns: 1fr; }
+    .hero { padding: 48px 0 36px; }
+    section { padding: 40px 0; }
+    .buybox { padding: 26px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="wrap">
+  <div class="brand">AGENT<span>KIT</span></div>
+  <a class="btn" href="#buy">Buy now, $79</a>
+</nav>
+
+<header class="hero wrap">
+  <div class="eyebrow">AI AGENT PRODUCT STARTER KIT</div>
+  <h1>Ship an AI agent product.<br><span class="hl">Not a demo.</span></h1>
+  <p class="sub">Streaming chat, RAG over your own documents, tool calling, auth, Stripe subscriptions, on a <strong>crash-safe iteration loop</strong> that keeps long agent runs alive through timeouts, crashes, and deploys.</p>
+  <div class="price-line">
+    <span class="price-old">$99</span><span class="price">$79</span>
+    <div class="price-note">Launch price · one-time payment · yours forever</div>
+  </div>
+  <a class="btn" href="#buy">Get the kit</a>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>Agent tutorials work, until production</h2>
+    <p class="lede">Most tutorials run the whole agent loop in <strong>one long request</strong>. That dies on timeouts, loses everything on a crash, and can't be observed mid-run. This kit decomposes the loop into <strong>single short iterations</strong>, each persisted to Postgres.</p>
+    <div class="flow">
+      <span class="step">enqueue</span><span class="arrow">→</span>
+      <span class="step">queue</span><span class="arrow">→</span>
+      <span class="step hot">claim → iterate (&lt;25s) → checkpoint</span><span class="arrow">× N →</span>
+      <span class="step">complete</span>
+    </div>
+    <p class="lede" style="margin-bottom:0">Any worker can run any iteration. <strong>A crash costs one step, never the run.</strong></p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What's inside</h2>
+    <p class="lede">34 files. Next.js 15 + TypeScript + Supabase. Any OpenAI-compatible LLM. Zero chat dependencies.</p>
+    <div class="grid">
+      <div class="card"><h3><span class="tag">components/chat/ChatWindow.tsx</span>Streaming chat UI</h3><p>Token-by-token SSE rendering. No chat library required.</p></div>
+      <div class="card"><h3><span class="tag">app/api/chat/route.ts</span>RAG chat API</h3><p>Auth-gated streaming endpoint grounded in your documents.</p></div>
+      <div class="card"><h3><span class="tag">lib/rag/ + migration 0002</span>RAG on pgvector</h3><p>Chunk → embed → similarity search via the <code class="inl">match_documents</code> RPC.</p></div>
+      <div class="card"><h3><span class="tag">lib/agent/tools.ts</span>Tool calling</h3><p>Tool registry + round executor with loop detection, failure budgets, unavailable-tool memory.</p></div>
+      <div class="card"><h3><span class="tag">lib/agent/loop.ts</span>Iteration loop</h3><p>Bounded steps, resumable checkpoints, rolling context tail. The core pattern.</p></div>
+      <div class="card"><h3><span class="tag">lib/agent/filestore.ts</span>FileStore</h3><p>The agent's working filesystem, persisted through checkpoints. Whitespace-tolerant edit.</p></div>
+      <div class="card"><h3><span class="tag">migration 0001 + queue.ts</span>Job queue</h3><p>Atomic <code class="inl">SKIP LOCKED</code> claims, heartbeats, stale-worker recovery.</p></div>
+      <div class="card"><h3><span class="tag">supabase/functions/agent-worker</span>Worker</h3><p>Deno edge function: claim → iterate → checkpoint → complete. Run it on a cron.</p></div>
+      <div class="card"><h3><span class="tag">lib/stripe/</span>Stripe subscriptions</h3><p>Checkout sessions, signature-verified webhooks, subscription gating.</p></div>
+      <div class="card"><h3><span class="tag">docs/ARCHITECTURE.md</span>The reasoning</h3><p>Why the iteration loop beats naive agent loops, checkpoint design, tuning knobs.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Who it's for</h2>
+    <div class="cols" style="margin-top:26px">
+      <div class="for yes">
+        <h3>You'll love it if…</h3>
+        <ul>
+          <li>You're shipping an AI feature and tired of timeout roulette</li>
+          <li>You want RAG over your own docs without reinventing retrieval</li>
+          <li>You'd rather start from production patterns than tutorial code</li>
+          <li>You know React + TypeScript and can run a Supabase project</li>
+        </ul>
+      </div>
+      <div class="for no">
+        <h3>Skip it if…</h3>
+        <ul>
+          <li>You want a no-code bot builder (this is source code)</li>
+          <li>You've never touched an API or a database</li>
+          <li>You need multi-agent swarms out of the box (v1 is single-agent)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap" style="max-width:720px">
+    <h2>FAQ</h2>
+    <div style="margin-top:26px">
+      <details><summary>What stack do I need?</summary><p>Next.js 15, TypeScript, a Supabase project (free tier works), a Stripe account for the billing parts, and any OpenAI-compatible LLM endpoint, OpenAI, Together, Fireworks, even local Ollama.</p></details>
+      <details><summary>How is this different from free boilerplates?</summary><p>Free starters give you a chat box wired to an API. This kit's value is the <strong>agent runtime architecture</strong>: the bounded iteration loop, Postgres checkpoints, atomic queue claims, and crash recovery, patterns extracted from a real production agent system, not a weekend demo.</p></details>
+      <details><summary>What exactly do I get?</summary><p>A versioned zip with the full source (34 files), both Supabase migrations, the Deno worker function, and the architecture docs. Everything is env-driven, no hardcoded keys or branding.</p></details>
+      <details><summary>What license?</summary><p>Single-seat commercial license: build and sell unlimited products with it. You may not redistribute or resell the kit itself.</p></details>
+      <details><summary>What if it doesn't work for me?</summary><p>14-day money-back guarantee. Email support and we'll sort it out or refund you, no forms, no hassle.</p></details>
+      <details><summary>How do I receive it?</summary><p>Pay with PayPal, and your download link + license key are delivered right after checkout.</p></details>
+    </div>
+  </div>
+</section>
+
+<section id="buy">
+  <div class="wrap">
+    <h2>Get the kit</h2>
+    <p class="lede">One-time payment. Yours forever, including v1.x updates.</p>
+    <div class="buybox">
+      <div><span class="price-old">$99</span></div>
+      <div class="price">$79</div>
+      <div class="price-note">Launch pricing, goes to $99 soon</div>
+      <p class="guarantee">14-day money-back guarantee · Secure checkout via PayPal</p>
+      <div id="paypal-buttons"></div>
+      <div id="pp-state"></div>
+      <div id="confirm-box">
+        <div style="font-weight:700;margin-bottom:8px">Payment confirmed, thank you!</div>
+        <div class="row">Order ID: <strong id="cf-order"></strong></div>
+        <div class="row">Paid by: <strong id="cf-payer"></strong></div>
+        <div class="row">Amount: <strong id="cf-amount"></strong></div>
+        <div class="row" style="margin-top:10px">Your download link and license key are on their way.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Single-seat commercial license · No redistribution · 14-day money-back guarantee</p>
+    <p style="margin-top:8px">Questions? <a href="mailto:SUPPORT_EMAIL_PLACEHOLDER">SUPPORT_EMAIL_PLACEHOLDER</a> · © 2026 AgentKit</p>
+  </div>
+</footer>
+
+<script>
+/* ================================================================
+   STORE CONFIG, fill these in at go-live. No other edits needed.
+   ================================================================ */
+const STORE_CONFIG = {
+  // PayPal REST app client ID (public; safe in page source).
+  // Use a SANDBOX client ID for testing, LIVE client ID for production.
+  PAYPAL_CLIENT_ID: "REPLACE_WITH_PAYPAL_CLIENT_ID",
+  CURRENCY: "USD",
+  PRICE: "79.00", // must match the advertised launch price
+};
+/* ================================================================
+   PAYMENT_SUCCESS HOOK, FULFILLMENT WIRED SEPARATELY
+   ----------------------------------------------------------------
+   onPaymentSuccess(details) fires after PayPal confirms the capture.
+   `details` is the PayPal order object: details.id (order ID),
+   details.payer.email_address, details.purchase_units[0].amount, etc.
+
+   TO WIRE FULFILLMENT, replace the body of onPaymentSuccess with a call
+   to your fulfillment endpoint, e.g.:
+
+     const res = await fetch("https://your-fulfillment.example.com/fulfill", {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ paypalOrderId: details.id })
+     });
+     const { download_url, license_key } = await res.json();
+     // then render the download link + license key into #confirm-box.
+
+   Until then, the buyer sees the confirmation panel below and delivery
+   is handled manually (PayPal dashboard -> email the zip + a license key).
+   ================================================================ */
+function onPaymentSuccess(details) {
+  const unit = (details.purchase_units && details.purchase_units[0]) || {};
+  const amount = (unit.amount && unit.amount.value) || "";
+  const currency = (unit.amount && unit.amount.currency_code) || "";
+  const email =
+    (details.payer && details.payer.email_address) || "your PayPal email";
+
+  document.getElementById("cf-order").textContent = details.id || "n/a";
+  document.getElementById("cf-payer").textContent = email;
+  document.getElementById("cf-amount").textContent =
+    amount ? `${currency} ${amount}` : "n/a";
+  document.getElementById("confirm-box").style.display = "block";
+  setState("Payment complete.", "ok");
+  document.getElementById("confirm-box").scrollIntoView({ behavior: "smooth", block: "center" });
+
+  // ---- FULFILLMENT HOOK (wired separately) ----
+  // TODO: POST details.id to your fulfillment endpoint here.
+  console.log("[store] PAYMENT_SUCCESS, wire fulfillment here:", details.id);
+}
+
+const stateEl = document.getElementById("pp-state");
+function setState(msg, cls) {
+  stateEl.textContent = msg;
+  stateEl.className = cls || "";
+}
+
+// Load the PayPal SDK dynamically so the client ID lives in one place.
+(function loadPayPal() {
+  if (!STORE_CONFIG.PAYPAL_CLIENT_ID || STORE_CONFIG.PAYPAL_CLIENT_ID.indexOf("REPLACE_") === 0) {
+    setState("Checkout is not configured yet, the seller is finishing setup.", "err");
+    return;
+  }
+  const s = document.createElement("script");
+  s.src = "https://www.paypal.com/sdk/js?client-id=" +
+    encodeURIComponent(STORE_CONFIG.PAYPAL_CLIENT_ID) +
+    "&currency=" + encodeURIComponent(STORE_CONFIG.CURRENCY) +
+    "&intent=capture&components=buttons";
+  s.onload = initButtons;
+  s.onerror = () => setState("Could not load PayPal. Check your connection and retry.", "err");
+  document.head.appendChild(s);
+})();
+
+function initButtons() {
+  paypal.Buttons({
+    style: { layout: "vertical", color: "gold", shape: "rect", label: "paypal" },
+    createOrder: function (data, actions) {
+      return actions.order.create({
+        purchase_units: [{
+          amount: {
+            currency_code: STORE_CONFIG.CURRENCY,
+            value: STORE_CONFIG.PRICE,
+          },
+          description: "AI Agent Product Starter Kit, single-seat commercial license",
+        }],
+      });
+    },
+    onApprove: function (data, actions) {
+      setState("Confirming payment with PayPal…", "working");
+      return actions.order.capture().then(function (details) {
+        onPaymentSuccess(details); // <-- fulfillment hook lives here
+      }).catch(function () {
+        setState("Payment was approved but capture failed. You have not been charged, please try again or contact support.", "err");
+      });
+    },
+    onCancel: function () { setState("Checkout cancelled, no charge made.", ""); },
+    onError: function () { setState("PayPal checkout error. Please try again.", "err"); },
+  }).render("#paypal-buttons");
+}
+</script>
+</body>
+</html>
