@@ -188,7 +188,9 @@
         <div class="row">Order ID: <strong id="cf-order"></strong></div>
         <div class="row">Paid by: <strong id="cf-payer"></strong></div>
         <div class="row">Amount: <strong id="cf-amount"></strong></div>
-        <div class="row" style="margin-top:10px">Your download link and license key are on their way.</div>
+        <div class="row">License key: <strong id="cf-license" style="font-family:monospace"></strong></div>
+        <div class="row" style="margin-top:10px"><a id="cf-download" href="#" style="display:none;font-weight:700">Download the kit</a></div>
+        <div class="row" style="margin-top:8px">Your download link and license key are also on their way by email.</div>
       </div>
     </div>
   </div>
@@ -197,7 +199,7 @@
 <footer>
   <div class="wrap">
     <p>Single-seat commercial license · No redistribution · 14-day money-back guarantee</p>
-    <p style="margin-top:8px">Questions? <a href="mailto:SUPPORT_EMAIL_PLACEHOLDER">SUPPORT_EMAIL_PLACEHOLDER</a> · © 2026 AgentKit</p>
+    <p style="margin-top:8px">Questions? <a href="mailto:hello@unbroken.store">hello@unbroken.store</a> · © 2026 Unbroken</p>
   </div>
 </footer>
 
@@ -207,50 +209,37 @@
    ================================================================ */
 const STORE_CONFIG = {
   // PayPal REST app client ID (public; safe in page source).
-  // Use a SANDBOX client ID for testing, LIVE client ID for production.
-  PAYPAL_CLIENT_ID: "REPLACE_WITH_PAYPAL_CLIENT_ID",
+  PAYPAL_CLIENT_ID: "BAA1MixAQw6rJcpqgnTcA4H3gWmz3fehAG10n1SNU_yhiYiXse5CAcsX-1laNJDOfRAMTNaReyKjFEQ6TA",
   CURRENCY: "USD",
-  PRICE: "79.00", // must match the advertised launch price
+  // Backend that creates PayPal orders (price set server-side) and fulfills.
+  BACKEND_URL: "https://mlfxitunhabbjguodsyv.supabase.co/functions/v1/store-payments",
 };
 /* ================================================================
-   PAYMENT_SUCCESS HOOK, FULFILLMENT WIRED SEPARATELY
-   ----------------------------------------------------------------
-   onPaymentSuccess(details) fires after PayPal confirms the capture.
-   `details` is the PayPal order object: details.id (order ID),
-   details.payer.email_address, details.purchase_units[0].amount, etc.
-
-   TO WIRE FULFILLMENT, replace the body of onPaymentSuccess with a call
-   to your fulfillment endpoint, e.g.:
-
-     const res = await fetch("https://your-fulfillment.example.com/fulfill", {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ paypalOrderId: details.id })
-     });
-     const { download_url, license_key } = await res.json();
-     // then render the download link + license key into #confirm-box.
-
-   Until then, the buyer sees the confirmation panel below and delivery
-   is handled manually (PayPal dashboard -> email the zip + a license key).
+   How checkout works:
+   1. createOrder asks our backend for a PayPal order. The backend sets
+      the price ($79 for the first 100 buyers, $99 after), so the page
+      can never be tampered with to lower it.
+   2. Buyer approves in the PayPal popup.
+   3. onApprove sends the order ID to our backend /capture endpoint.
+      The backend captures the payment with PayPal, creates the order
+      record, generates a license key, and emails the download link.
+   4. The confirmation panel shows the license key and download link
+      immediately, and the same details arrive by email.
    ================================================================ */
-function onPaymentSuccess(details) {
-  const unit = (details.purchase_units && details.purchase_units[0]) || {};
-  const amount = (unit.amount && unit.amount.value) || "";
-  const currency = (unit.amount && unit.amount.currency_code) || "";
-  const email =
-    (details.payer && details.payer.email_address) || "your PayPal email";
-
-  document.getElementById("cf-order").textContent = details.id || "n/a";
-  document.getElementById("cf-payer").textContent = email;
-  document.getElementById("cf-amount").textContent =
-    amount ? `${currency} ${amount}` : "n/a";
+async function onPaymentSuccess(result) {
+  document.getElementById("cf-order").textContent = result.orderId || "n/a";
+  document.getElementById("cf-payer").textContent = result.email || "your PayPal email";
+  document.getElementById("cf-amount").textContent = result.amount ? `USD ${result.amount}` : "n/a";
+  const licEl = document.getElementById("cf-license");
+  if (licEl && result.licenseKey) licEl.textContent = result.licenseKey;
+  const dlEl = document.getElementById("cf-download");
+  if (dlEl && result.downloadUrl) {
+    dlEl.href = result.downloadUrl;
+    dlEl.style.display = "inline-block";
+  }
   document.getElementById("confirm-box").style.display = "block";
-  setState("Payment complete.", "ok");
+  setState("Payment complete. Your download link and license key are also on the way by email.", "ok");
   document.getElementById("confirm-box").scrollIntoView({ behavior: "smooth", block: "center" });
-
-  // ---- FULFILLMENT HOOK (wired separately) ----
-  // TODO: POST details.id to your fulfillment endpoint here.
-  console.log("[store] PAYMENT_SUCCESS, wire fulfillment here:", details.id);
 }
 
 const stateEl = document.getElementById("pp-state");
@@ -278,23 +267,32 @@ function setState(msg, cls) {
 function initButtons() {
   paypal.Buttons({
     style: { layout: "vertical", color: "gold", shape: "rect", label: "paypal" },
-    createOrder: function (data, actions) {
-      return actions.order.create({
-        purchase_units: [{
-          amount: {
-            currency_code: STORE_CONFIG.CURRENCY,
-            value: STORE_CONFIG.PRICE,
-          },
-          description: "AI Agent Product Starter Kit, single-seat commercial license",
-        }],
-      });
+    createOrder: function () {
+      setState("Starting secure checkout…", "working");
+      return fetch(STORE_CONFIG.BACKEND_URL + "/create-order", { method: "POST" })
+        .then(function (res) {
+          if (!res.ok) throw new Error("order failed");
+          return res.json();
+        })
+        .then(function (data) { return data.orderId; })
+        .catch(function () {
+          setState("Could not start checkout. Please try again.", "err");
+          throw new Error("create-order failed");
+        });
     },
-    onApprove: function (data, actions) {
-      setState("Confirming payment with PayPal…", "working");
-      return actions.order.capture().then(function (details) {
-        onPaymentSuccess(details); // <-- fulfillment hook lives here
+    onApprove: function (data) {
+      setState("Confirming payment…", "working");
+      return fetch(STORE_CONFIG.BACKEND_URL + "/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: data.orderID }),
+      }).then(function (res) {
+        if (!res.ok) throw new Error("capture failed");
+        return res.json();
+      }).then(function (result) {
+        onPaymentSuccess(result);
       }).catch(function () {
-        setState("Payment was approved but capture failed. You have not been charged, please try again or contact support.", "err");
+        setState("Payment was approved but confirmation failed. You have not been charged twice; check your email or contact support.", "err");
       });
     },
     onCancel: function () { setState("Checkout cancelled, no charge made.", ""); },
